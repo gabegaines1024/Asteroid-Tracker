@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroid Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>🌌 Asteroid Tracker</h1>
+        <p>Track Near-Earth Objects from NASA's Database</p>
+    </header>
+
+    <main>
+        <section class="controls">
+            <div class="fetch-section">
+                <h2>Fetch New Data</h2>
+                <div class="date-inputs">
+                    <label>
+                        Start Date:
+                        <input type="date" id="startDate">
+                    </label>
+                    <label>
+                        End Date:
+                        <input type="date" id="endDate">
+                    </label>
+                    <button id="fetchBtn">Fetch from NASA</button>
+                </div>
+            </div>
+
+            <div class="filter-section">
+                <h2>Filters</h2>
+                <label>
+                    <input type="checkbox" id="hazardousFilter">
+                    Show Only Hazardous
+                </label>
+                <button id="refreshBtn">Refresh Data</button>
+            </div>
+        </section>
+
+        <section class="data-display">
+            <h2>Asteroid Database</h2>
+            <div id="loading" class="loading hidden">Loading...</div>
+            <div id="error" class="error hidden"></div>
+            
+            <table id="asteroidTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Diameter (km)</th>
+                        <th>Velocity (km/s)</th>
+                        <th>Miss Distance (km)</th>
+                        <th>Approach Date</th>
+                        <th>Hazardous</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="asteroidTableBody">
+                    <!-- Populated by JavaScript -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Detail Modal -->
+        <div id="detailModal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2 id="modalTitle"></h2>
+                <div id="modalBody"></div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>Data provided by NASA's NeoWs API</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
