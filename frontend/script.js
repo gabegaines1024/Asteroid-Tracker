@@ -42,6 +42,10 @@ async function fetchFromNASA() {
         showError('Please select both start and end dates');
         return;
     }
+    if (startDate > endDate) {
+        showError('Start date must be before end date');
+        return;
+    }
     
     showLoading(true);
     hideError();
@@ -60,8 +64,8 @@ async function fetchFromNASA() {
         
         if (!response.ok) throw new Error('Failed to fetch from NASA');
         
-        const data = await response.json();
-        alert(data.message);
+        const asteroids = await response.json();
+        alert(`Fetched ${asteroids.length} asteroids from NASA`);
         loadAsteroids();
     } catch (error) {
         showError('Error fetching from NASA: ' + error.message);
@@ -118,16 +122,15 @@ async function showAsteroidDetails(id) {
         
         modalTitle.textContent = asteroid.name;
         modalBody.innerHTML = `
-            <p><strong>NASA ID:</strong> ${asteroid.nasa_id}</p>
-            <p><strong>Absolute Magnitude:</strong> ${asteroid.absolute_magnitude || 'N/A'}</p>
-            <p><strong>Estimated Diameter:</strong> ${asteroid.estimated_diameter_min?.toFixed(3)} - ${asteroid.estimated_diameter_max?.toFixed(3)} km</p>
-            <p><strong>Close Approach Date:</strong> ${asteroid.close_approach_date}</p>
-            <p><strong>Relative Velocity:</strong> ${asteroid.relative_velocity?.toFixed(2)} km/s</p>
-            <p><strong>Miss Distance:</strong> ${asteroid.miss_distance?.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} km</p>
+            <p><strong>NASA JPL URL:</strong> ${asteroid.nasa_jpl_url ? `<a href="${asteroid.nasa_jpl_url}" target="_blank" rel="noopener">${asteroid.nasa_jpl_url}</a>` : 'N/A'}</p>
+            <p><strong>Absolute Magnitude:</strong> ${formatMagnitude(asteroid.absolute_magnitude)}</p>
+            <p><strong>Estimated Diameter:</strong> ${formatDiameter(asteroid)} km</p>
+            <p><strong>Close Approach Date:</strong> ${asteroid.close_approach_date_full || asteroid.close_approach_date}</p>
+            <p><strong>Relative Velocity:</strong> ${formatVelocity(asteroid.relative_velocity)} km/s</p>
+            <p><strong>Miss Distance:</strong> ${formatDistance(asteroid.miss_distance)} km</p>
             <p><strong>Potentially Hazardous:</strong> ${asteroid.is_potentially_hazardous ? 'Yes' : 'No'}</p>
-            ${asteroid.semi_major_axis ? `<p><strong>Semi-Major Axis:</strong> ${asteroid.semi_major_axis.toFixed(3)} AU</p>` : ''}
-            ${asteroid.eccentricity ? `<p><strong>Eccentricity:</strong> ${asteroid.eccentricity.toFixed(4)}</p>` : ''}
-            ${asteroid.inclination ? `<p><strong>Inclination:</strong> ${asteroid.inclination.toFixed(2)}°</p>` : ''}
+            <p><strong>Orbiting Body:</strong> ${asteroid.orbiting_body || 'Unknown'}</p>
+            <p><strong>Last Updated:</strong> ${new Date(asteroid.updated_at).toLocaleString()}</p>
         `;
         
         detailModal.classList.remove('hidden');
@@ -149,9 +152,9 @@ function displayAsteroids(asteroids) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${asteroid.name}</td>
-            <td>${asteroid.estimated_diameter_min?.toFixed(3)} - ${asteroid.estimated_diameter_max?.toFixed(3)}</td>
-            <td>${asteroid.relative_velocity?.toFixed(2)}</td>
-            <td>${asteroid.miss_distance?.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</td>
+            <td>${formatDiameter(asteroid)}</td>
+            <td>${formatVelocity(asteroid.relative_velocity)}</td>
+            <td>${formatDistance(asteroid.miss_distance)}</td>
             <td>${asteroid.close_approach_date}</td>
             <td><span class="hazard-badge ${asteroid.is_potentially_hazardous ? 'hazard-yes' : 'hazard-no'}">
                 ${asteroid.is_potentially_hazardous ? 'YES' : 'NO'}
@@ -178,12 +181,33 @@ function hideError() {
     errorDiv.classList.add('hidden');
 }
 
+function formatDiameter(asteroid) {
+    const min = Number.isFinite(asteroid.estimated_diameter_min) ? asteroid.estimated_diameter_min : null;
+    const max = Number.isFinite(asteroid.estimated_diameter_max) ? asteroid.estimated_diameter_max : null;
+
+    if (min === null || max === null) {
+        return 'N/A';
+    }
+
+    return `${min.toFixed(3)} - ${max.toFixed(3)}`;
+}
+
+function formatVelocity(value) {
+    if (!Number.isFinite(value)) return 'N/A';
+    return Number(value).toFixed(2);
+}
+
+function formatDistance(value) {
+    if (!Number.isFinite(value)) return 'N/A';
+    return Number(value)
+        .toFixed(0)
+        .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function formatMagnitude(value) {
+    if (!Number.isFinite(value)) return 'N/A';
+    return Number(value).toFixed(2);
+}
+
 // Load asteroids on page load
 loadAsteroids();
-```
-
----
-
-## **.env file** (create this in your backend folder)
-```
-NASA_API_KEY=your_api_key_here

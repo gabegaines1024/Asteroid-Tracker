@@ -1,7 +1,11 @@
 from datetime import datetime
-from sqlalchemy import Mapped, mapped_column,  Integer, String, Float, Boolean, DateTime
-from sqlalchemy.sql import func 
+
+from sqlalchemy import Boolean, DateTime, Float, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import func
+
 from database import Base
+
 
 class Asteroid(Base):
     __tablename__ = "asteroids"
@@ -11,6 +15,8 @@ class Asteroid(Base):
     nasa_jpl_url: Mapped[str] = mapped_column(String, index=True)
     absolute_magnitude: Mapped[float] = mapped_column(Float)
     is_potentially_hazardous: Mapped[bool] = mapped_column(Boolean)
+    estimated_diameter_min: Mapped[float] = mapped_column(Float, default=0.0)
+    estimated_diameter_max: Mapped[float] = mapped_column(Float, default=0.0)
     close_approach_date: Mapped[str] = mapped_column(String, index=True)
     close_approach_date_full: Mapped[str] = mapped_column(String, index=True)
     epoch_date_close_approach: Mapped[int] = mapped_column(Integer, index=True)

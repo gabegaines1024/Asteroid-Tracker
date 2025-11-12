@@ -1,21 +1,22 @@
-from fastapi import FastAPI, HTTPException, Depends
+from typing import List
+
+import uvicorn
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy.orm import Session
-from typing import List, Optional
+
+import crud
+import schemas
+from api_client import fetch_nasa_asteroids
 from database import engine, get_db
 from models import Base
-import schemas
-import crud
-from api_client import fetch_nasa_asteroids
-import uvicorn
 
-#create database tables
+# create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Asteroid Tracker API", description="API for tracking asteroids")
 
-#CORS Middleware
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,88 +25,97 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-#Routes
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Asteroid Tracker API"}
 
+
 @app.get("/asteroids", response_model=List[schemas.Asteroid])
 def get_asteroids(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)) -> List[schemas.Asteroid]:
     try:
-        asteroids = crud.get_all_asteroids(db, skip=skip, limit=limit)
-        return asteroids
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get asteroids: {str(e)}")
+        return crud.get_all_asteroids(db, skip=skip, limit=limit)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to get asteroids: {exc}") from exc
 
-@app.get(f"/asteroids/{id}", response_model=schemas.Asteroid)
-def get_asteroid_by_id(id: int, db: Session = Depends(get_db)) -> schemas.Asteroid:
+
+@app.get("/asteroids/{asteroid_id}", response_model=schemas.Asteroid)
+def get_asteroid_by_id(asteroid_id: int, db: Session = Depends(get_db)) -> schemas.Asteroid:
     try:
-        asteroid = crud.get_asteroid_by_id(db, id)
-        return asteroid
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get asteroid: {str(e)}")
+        return crud.get_asteroid_by_id(db, asteroid_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to get asteroid: {exc}") from exc
 
-@app.post("/asteroids", response_model=schemas.Asteroid)
+
+@app.post("/asteroids", response_model=schemas.Asteroid, status_code=201)
 def create_asteroid(asteroid: schemas.AsteroidCreate, db: Session = Depends(get_db)) -> schemas.Asteroid:
     try:
-        _asteroid = crud.create_asteroid(db, asteroid)
-        db.add(_asteroid)
-        db.commit()
-        db.refresh(_asteroid)
-        return _asteroid
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create asteroid: {str(e)}")
+        return crud.create_asteroid(db, asteroid)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to create asteroid: {exc}") from exc
 
-@app.put("/asteroids/{id}", response_model=schemas.Asteroid)
-def update_asteroid(id: int, asteroid: schemas.AsteroidUpdate, db: Session = Depends(get_db)) -> schemas.Asteroid:
+
+@app.put("/asteroids/{asteroid_id}", response_model=schemas.Asteroid)
+def update_asteroid(
+    asteroid_id: int, asteroid: schemas.AsteroidUpdate, db: Session = Depends(get_db)
+) -> schemas.Asteroid:
     try:
-        _asteroid = crud.update_asteroid(db, id, asteroid)
-        db.commit()
-        db.refresh(_asteroid)
-        return _asteroid
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to update asteroid: {str(e)}")
+        return crud.update_asteroid(db, asteroid_id, asteroid)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to update asteroid: {exc}") from exc
 
 
-def delete_asteroid(id: int, db: Session = Depends(get_db)) -> schemas.AsteroidDelete:
+@app.delete("/asteroids/{asteroid_id}", response_model=schemas.AsteroidDelete)
+def delete_asteroid(asteroid_id: int, db: Session = Depends(get_db)) -> schemas.AsteroidDelete:
     try:
-        _asteroid = crud.delete_asteroid(db, id)
-        db.commit()
-        return _asteroid
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to delete asteroid: {str(e)}")
+        return crud.delete_asteroid(db, asteroid_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to delete asteroid: {exc}") from exc
+
 
 @app.get("/asteroids/filter/hazardous", response_model=List[schemas.Asteroid])
 def get_hazardous_asteroids(db: Session = Depends(get_db)) -> List[schemas.Asteroid]:
     try:
-        asteroids = crud.get_all_asteroids(db, hazardous=True)
-        return asteroids
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get hazardous asteroids: {str(e)}")
+        return crud.get_all_asteroids(db, hazardous=True)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to get hazardous asteroids: {exc}") from exc
+
 
 @app.get("/asteroids/filter/not_hazardous", response_model=List[schemas.Asteroid])
 def get_not_hazardous_asteroids(db: Session = Depends(get_db)) -> List[schemas.Asteroid]:
     try:
-        asteroids = crud.get_all_asteroids(db, hazardous=False)
-        return asteroids
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get not hazardous asteroids: {str(e)}")
+        return crud.get_all_asteroids(db, hazardous=False)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to get non-hazardous asteroids: {exc}") from exc
+
 
 @app.post("/asteroids/fetch", response_model=List[schemas.Asteroid])
-def fetch_asteroids(start_date: str, end_date: str, db: Session = Depends(get_db)) -> List[schemas.Asteroid]:
+def fetch_asteroids(payload: schemas.FetchRequest, db: Session = Depends(get_db)) -> List[schemas.Asteroid]:
     try:
-        asteroids = fetch_nasa_asteroids(start_date, end_date)
-        for asteroid in asteroids:
-            _asteroid = crud.create_asteroid(db, asteroid)
-            db.add(_asteroid)
-        db.commit()
-        return asteroids
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to fetch asteroids: {str(e)}")
+        asteroids_to_create = fetch_nasa_asteroids(payload.start_date.isoformat(), payload.end_date.isoformat())
+        created_asteroids: List[schemas.Asteroid] = []
+        for asteroid in asteroids_to_create:
+            created_asteroids.append(crud.create_asteroid(db, asteroid))
+        return created_asteroids
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch asteroids: {exc}") from exc
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
